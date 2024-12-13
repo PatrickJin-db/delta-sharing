@@ -32,6 +32,7 @@ from delta_sharing.protocol import AddCdcFile, CdfOptions, FileAction, Table
 from delta_sharing.rest_client import DataSharingRestClient
 from delta_sharing.fake_checkpoint import get_fake_checkpoint_byte_array
 
+import time
 
 class DeltaSharingReader:
     def __init__(
@@ -103,7 +104,9 @@ class DeltaSharingReader:
 
         Returns: a pandas df
         """
+        function_start = time.time()
         self._rest_client.set_delta_format_header()
+        start = time.time()
         response = self._rest_client.list_files_in_table(
             self._table,
             predicateHints=self._predicateHints,
@@ -112,14 +115,20 @@ class DeltaSharingReader:
             version=self._version,
             timestamp=self._timestamp
         )
+        end = time.time()
+        print(f"\tSNAPSHOT_KERNEL: {end-start} seconds to receive response")
 
         lines = response.lines
         # Create a temporary directory using the tempfile module
         temp_dir = tempfile.TemporaryDirectory()
+        start = time.time()
         table_path = self.__write_temp_delta_log_snapshot(temp_dir.name, lines)
+        end = time.time()
+        print(f"\tSNAPSHOT_KERNEL: {end-start} seconds to write delta log")
         num_files = len(lines)
 
         # Invoke delta-kernel-rust to return the pandas dataframe
+        start = time.time()
         interface = delta_kernel_rust_sharing_wrapper.PythonInterface(table_path)
         table = delta_kernel_rust_sharing_wrapper.Table(table_path)
         snapshot = table.snapshot(interface)
@@ -131,6 +140,8 @@ class DeltaSharingReader:
             return pd.DataFrame(columns=schema.names)
 
         table = pa.Table.from_batches(scan.execute(interface))
+        end = time.time()
+        print(f"\tSNAPSHOT_KERNEL: {end-start} seconds total time in kernel")
         result = table.to_pandas()
 
         # Apply residual limit that was not handled from server pushdown
@@ -139,6 +150,8 @@ class DeltaSharingReader:
         # Delete the temp folder explicitly and remove the delta format from header
         temp_dir.cleanup()
         self._rest_client.remove_delta_format_header()
+        function_end = time.time()
+        print(f"\tSNAPSHOT_KERNEL: {function_end-function_start} seconds total time")
 
         return result
 
@@ -288,8 +301,12 @@ class DeltaSharingReader:
                 last_checkpoint_file.close()
 
     def __table_changes_to_pandas_kernel(self, cdfOptions: CdfOptions) -> pd.DataFrame:
+        function_start = time.time()
         self._rest_client.set_delta_format_header()
+        start = time.time()
         response = self._rest_client.list_table_changes(self._table, cdfOptions)
+        end = time.time()
+        print(f"\tCDF_KERNEL: {end-start} seconds to receive response")
         lines = response.lines
 
         # first line is protocol
@@ -339,6 +356,7 @@ class DeltaSharingReader:
         # Create a temporary directory using the tempfile module
         temp_dir = tempfile.TemporaryDirectory()
         try:
+            start = time.time()
             delta_log_dir_name = temp_dir.name
             table_path = "file:///" + delta_log_dir_name
 
@@ -354,8 +372,11 @@ class DeltaSharingReader:
                 version_to_actions,
                 version_to_timestamp,
             )
+            end = time.time()
+            print(f"\tCDF_KERNEL: {end-start} seconds to write delta log")
 
             # Invoke delta-kernel-rust to return the pandas dataframe
+            start = time.time()
             interface = delta_kernel_rust_sharing_wrapper.PythonInterface(table_path)
             table = delta_kernel_rust_sharing_wrapper.Table(table_path)
             scan = delta_kernel_rust_sharing_wrapper.TableChangesScanBuilder(
@@ -364,16 +385,40 @@ class DeltaSharingReader:
 
             if num_versions_with_action == 0:
                 schema = scan.execute(interface).schema
+                end = time.time()
                 result = pd.DataFrame(columns=schema.names)
             else:
                 table = pa.Table.from_batches(scan.execute(interface))
+                end = time.time()
                 result = table.to_pandas()
+
+            print(f"\tCDF_KERNEL: {end-start} seconds total time in kernel")
         finally:
+            get_size_start = time.time()
+            tempdir_size = self.get_dir_size(temp_dir.name)
+            print(f"\tCDF_KERNEL: {tempdir_size} bytes in local delta log")
+            get_size_end = time.time()
             # Delete the temp folder explicitly and remove the delta format from header
+            start = time.time()
             temp_dir.cleanup()
+            end = time.time()
+            print(f"\tCDF_KERNEL: {end-start} seconds to clean up tempdir")
             self._rest_client.remove_delta_format_header()
 
+        function_end = time.time()
+        # must subtract the amount of time it took to get the size
+        print(f"\tCDF_KERNEL: {function_end - function_start - (get_size_end - get_size_start)} seconds total time")
+
         return result
+
+    def get_dir_size(self, path: str):
+        total = 0
+        for entry in os.scandir(path):
+            if entry.is_file():
+                total += entry.stat().st_size
+            elif entry.is_dir():
+                total += self.get_dir_size(entry.path)
+        return total
 
     def table_changes_to_pandas(self, cdfOptions: CdfOptions) -> pd.DataFrame:
         # Only use delta format if explicitly specified
