@@ -30,6 +30,7 @@ from delta_sharing.converter import to_converters, get_empty_table
 from delta_sharing.protocol import AddCdcFile, CdfOptions, FileAction, Table
 from delta_sharing.rest_client import DataSharingRestClient
 
+import time
 
 class DeltaSharingReader:
     def __init__(
@@ -101,7 +102,9 @@ class DeltaSharingReader:
 
         Returns: a pandas df
         """
+        function_start = time.time()
         self._rest_client.set_delta_format_header()
+        start = time.time()
         response = self._rest_client.list_files_in_table(
             self._table,
             predicateHints=self._predicateHints,
@@ -110,12 +113,15 @@ class DeltaSharingReader:
             version=self._version,
             timestamp=self._timestamp
         )
+        end = time.time()
+        print(f"\tSNAPSHOT_KERNEL: {end-start} seconds to receive response")
 
         lines = response.lines
 
         # Create a temporary directory using the tempfile module
         temp_dir = tempfile.TemporaryDirectory()
         delta_log_dir_name = temp_dir.name
+        start = time.time()
         table_path = "file:///" + delta_log_dir_name
 
         # Create a new directory named '_delta_log' within the temporary directory
@@ -149,8 +155,11 @@ class DeltaSharingReader:
 
         # Close the file
         json_file.close()
+        end = time.time()
+        print(f"\tSNAPSHOT_KERNEL: {end-start} seconds to write delta log")
 
         # Invoke delta-kernel-rust to return the pandas dataframe
+        start = time.time()
         interface = delta_kernel_rust_sharing_wrapper.PythonInterface(table_path)
         table = delta_kernel_rust_sharing_wrapper.Table(table_path)
         snapshot = table.snapshot(interface)
@@ -162,6 +171,8 @@ class DeltaSharingReader:
             return pd.DataFrame(columns=schema.names)
 
         table = pa.Table.from_batches(scan.execute(interface))
+        end = time.time()
+        print(f"\tSNAPSHOT_KERNEL: {end-start} seconds total time in kernel")
         result = table.to_pandas()
 
         # Apply residual limit that was not handled from server pushdown
@@ -170,6 +181,8 @@ class DeltaSharingReader:
         # Delete the temp folder explicitly and remove the delta format from header
         temp_dir.cleanup()
         self._rest_client.remove_delta_format_header()
+        function_end = time.time()
+        print(f"\tSNAPSHOT_KERNEL: {function_end-function_start} seconds total time")
 
         return result
 
@@ -235,7 +248,11 @@ class DeltaSharingReader:
         return merged[[col_map[field["name"].lower()] for field in schema_json["fields"]]]
 
     def table_changes_to_pandas(self, cdfOptions: CdfOptions) -> pd.DataFrame:
+        start = time.time()
+        function_start = start
         response = self._rest_client.list_table_changes(self._table, cdfOptions)
+        end = time.time()
+        print(f"\tCDF_PARQUET: {end-start} seconds to receive response")
 
         schema_json = loads(response.metadata.schema_string)
 
@@ -244,11 +261,20 @@ class DeltaSharingReader:
 
         converters = to_converters(schema_json)
         pdfs = []
+        start = time.time()
         for action in response.actions:
             pdf = DeltaSharingReader._to_pandas(action, converters, True, None)
             pdfs.append(pdf)
+        end = time.time()
+        print(f"\tCDF_PARQUET: {end-start} seconds to construct dataframes")
 
-        return pd.concat(pdfs, axis=0, ignore_index=True, copy=False)
+        start = time.time()
+        result = pd.concat(pdfs, axis=0, ignore_index=True, copy=False)
+        end = time.time()
+        function_end = end
+        print(f"\tCDF_PARQUET: {end-start} seconds to concatenate dataframes")
+        print(f"\tCDF_PARQUET: {function_end-function_start} seconds total time")
+        return result
 
     def _copy(
         self,
