@@ -25,7 +25,7 @@ import os
 import pandas as pd
 import pyarrow as pa
 import tempfile
-from pyarrow.dataset import dataset
+from pyarrow.parquet import ParquetDataset, ParquetFile
 
 from delta_sharing.converter import to_converters, get_empty_table
 from delta_sharing.protocol import AddCdcFile, CdfOptions, FileAction, Table
@@ -431,11 +431,21 @@ class DeltaSharingReader:
         else:
             filesystem = fsspec.filesystem(protocol)
 
-        pa_dataset = dataset(source=action.url, format="parquet", filesystem=filesystem)
-        pa_table = pa_dataset.head(limit) if limit is not None else pa_dataset.to_table()
-        pdf = pa_table.to_pandas(
-            date_as_object=True, use_threads=False, split_blocks=True, self_destruct=True
-        )
+        pa_file = ParquetFile(action.url, filesystem=filesystem)
+        pdfs = []
+        rows_read = 0
+        for i in range(pa_file.num_row_groups):
+            pa_row_group = pa_file.read_row_group(i)
+            rows_read += len(pa_row_group)
+            pdfs.append(pa_row_group.to_pandas(
+                date_as_object=True, use_threads=False, split_blocks=True, self_destruct=True
+            ))
+            if limit is not None and rows_read >= limit:
+                break
+
+        pdf = pd.concat(pdfs, axis=0, ignore_index=True, copy=False)
+        if limit is not None:
+            pdf = pdf.take(limit)
 
         lowered_cols = set()
         for col in pdf.columns:
