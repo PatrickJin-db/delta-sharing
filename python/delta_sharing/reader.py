@@ -174,14 +174,14 @@ class DeltaSharingReader:
 
         if self._limit is None:
             pdfs = [
-                DeltaSharingReader._to_pandas(file, converters, False, None)
+                DeltaSharingReader._to_pandas(file, converters, False, schema_json["fields"], None)
                 for file in response.add_files
             ]
         else:
             left = self._limit
             pdfs = []
             for file in response.add_files:
-                pdf = DeltaSharingReader._to_pandas(file, converters, False, left)
+                pdf = DeltaSharingReader._to_pandas(file, converters, False, schema_json["fields"], limit=left)
                 pdfs.append(pdf)
                 left -= len(pdf)
                 assert (
@@ -201,7 +201,7 @@ class DeltaSharingReader:
         for col in merged.columns:
             col_map[col.lower()] = col
 
-        return merged[[col_map[field["name"].lower()] for field in schema_json["fields"]]]
+        return merged
 
     def __write_temp_delta_log_snapshot(self, temp_dir: str, lines: List[str]) -> str:
         delta_log_dir_name = temp_dir
@@ -389,7 +389,7 @@ class DeltaSharingReader:
         converters = to_converters(schema_json)
         pdfs = []
         for action in response.actions:
-            pdf = DeltaSharingReader._to_pandas(action, converters, True, None)
+            pdf = DeltaSharingReader._to_pandas(action, converters, True, None, None)
             pdfs.append(pdf)
 
         return pd.concat(pdfs, axis=0, ignore_index=True, copy=False)
@@ -417,6 +417,7 @@ class DeltaSharingReader:
         action: FileAction,
         converters: Dict[str, Callable[[str], Any]],
         for_cdf: bool,
+        fields: Optional[List[Dict[str, str]]],
         limit: Optional[int],
     ) -> pd.DataFrame:
         url = urlparse(action.url)
@@ -432,9 +433,23 @@ class DeltaSharingReader:
             filesystem = fsspec.filesystem(protocol)
 
         pa_file = ParquetFile(action.url, filesystem=filesystem)
+
+        col_lower_to_original = {}
+        for col in pa_file.schema.names:
+            col_lower_to_original[col.lower()] = col
+
+        if fields is not None:
+            cols_to_keep = []
+            for field in fields:
+                col = field["name"].lower()
+                if col in col_lower_to_original:
+                    cols_to_keep.append(col_lower_to_original[col])
+        else:
+            cols_to_keep = None
+
         pdfs = []
         rows_read = 0
-        for batch in pa_file.iter_batches():
+        for batch in pa_file.iter_batches(columns=cols_to_keep):
             rows_read += len(batch)
             pdfs.append(batch.to_pandas(
                 date_as_object=True, use_threads=False, split_blocks=False, self_destruct=True
@@ -446,13 +461,9 @@ class DeltaSharingReader:
         if limit is not None:
             pdf = pdf.head(limit)
 
-        lowered_cols = set()
-        for col in pdf.columns:
-            lowered_cols.add(col.lower())
-
         for col, converter in converters.items():
             lowered = col.lower()
-            if lowered not in lowered_cols:
+            if lowered not in col_lower_to_original:
                 if col in action.partition_values:
                     if converter is not None:
                         pdf[col] = converter(action.partition_values[col])
