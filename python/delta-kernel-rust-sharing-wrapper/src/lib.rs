@@ -43,6 +43,12 @@ struct Table(Url);
 impl Table {
     #[new]
     fn new(location: &str) -> DeltaPyResult<Self> {
+        // location must end in a trailing / so that it gets treated as a dir
+        let location = if location.ends_with('/') {
+            location
+        } else {
+            &format!("{location}/")
+        };
         let location = Url::parse(location).map_err(KernelError::InvalidUrl)?;
         Ok(Table(location))
     }
@@ -195,6 +201,7 @@ impl PythonInterface {
             .map_err(|e| KernelError::InvalidTableLocation(format!("FIXME {e}")))?;
         let object_store: Arc<_> = object_store.into();
         let engine = DefaultEngine::new(object_store);
+        // let engine = DefaultEngine::new(Arc::new(object_store));
         Ok(PythonInterface(Arc::new(engine)))
     }
 }
