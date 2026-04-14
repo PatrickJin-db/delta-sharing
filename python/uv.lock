@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.8"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -24,7 +24,7 @@ resolution-markers = [
 ]
 dependencies = [
     { name = "aiohttp", version = "3.10.11", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, marker = "python_full_version < '3.9'" },
-    { name = "azure-core", marker = "python_full_version < '3.9'" },
+    { name = "azure-core", version = "1.33.0", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, marker = "python_full_version < '3.9'" },
     { name = "azure-datalake-store", marker = "python_full_version < '3.9'" },
     { name = "azure-identity", version = "1.21.0", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, marker = "python_full_version < '3.9'" },
     { name = "azure-storage-blob", version = "12.26.0", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, marker = "python_full_version < '3.9'" },
@@ -44,7 +44,7 @@ resolution-markers = [
 ]
 dependencies = [
     { name = "aiohttp", version = "3.13.3", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, marker = "python_full_version == '3.9.*'" },
-    { name = "azure-core", marker = "python_full_version == '3.9.*'" },
+    { name = "azure-core", version = "1.38.3", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, marker = "python_full_version == '3.9.*'" },
     { name = "azure-datalake-store", marker = "python_full_version == '3.9.*'" },
     { name = "azure-identity", version = "1.25.3", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, marker = "python_full_version == '3.9.*'" },
     { name = "azure-storage-blob", version = "12.28.0", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, marker = "python_full_version == '3.9.*'" },
@@ -66,7 +66,7 @@ resolution-markers = [
     "python_full_version == '3.10.*'",
 ]
 dependencies = [
-    { name = "azure-core", marker = "python_full_version >= '3.10'" },
+    { name = "azure-core", version = "1.38.3", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "azure-datalake-store", marker = "python_full_version >= '3.10'" },
     { name = "azure-identity", version = "1.25.3", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "azure-storage-blob", version = "12.28.0", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, extra = ["aio"], marker = "python_full_version >= '3.10'" },
@@ -523,16 +523,38 @@ wheels = [
 name = "azure-core"
 version = "1.33.0"
 source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }
+resolution-markers = [
+    "python_full_version >= '3.8.1' and python_full_version < '3.9'",
+    "python_full_version < '3.8.1'",
+]
 dependencies = [
     { name = "requests", version = "2.32.4", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, marker = "python_full_version < '3.9'" },
-    { name = "requests", version = "2.32.5", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, marker = "python_full_version >= '3.9'" },
-    { name = "six" },
+    { name = "six", marker = "python_full_version < '3.9'" },
     { name = "typing-extensions", version = "4.13.2", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, marker = "python_full_version < '3.9'" },
-    { name = "typing-extensions", version = "4.15.0", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, marker = "python_full_version >= '3.9'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/75/aa/7c9db8edd626f1a7d99d09ef7926f6f4fb34d5f9fa00dc394afdfe8e2a80/azure_core-1.33.0.tar.gz", hash = "sha256:f367aa07b5e3005fec2c1e184b882b0b039910733907d001c20fb08ebb8c0eb9", size = 295633, upload-time = "2025-04-03T23:51:02.058Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/07/b7/76b7e144aa53bd206bf1ce34fa75350472c3f69bf30e5c8c18bc9881035d/azure_core-1.33.0-py3-none-any.whl", hash = "sha256:9b5b6d0223a1d38c37500e6971118c1e0f13f54951e6893968b38910bc9cda8f", size = 207071, upload-time = "2025-04-03T23:51:03.806Z" },
+]
+
+[[package]]
+name = "azure-core"
+version = "1.38.3"
+source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }
+resolution-markers = [
+    "python_full_version >= '3.14'",
+    "python_full_version == '3.13.*'",
+    "python_full_version >= '3.11' and python_full_version < '3.13'",
+    "python_full_version == '3.10.*'",
+    "python_full_version == '3.9.*'",
+]
+dependencies = [
+    { name = "requests", version = "2.32.5", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, marker = "python_full_version >= '3.9'" },
+    { name = "typing-extensions", version = "4.15.0", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, marker = "python_full_version >= '3.9'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c8/29/9641b73248745774a52c7ce7f965ed1febbdea787ec21caad3ae6891d18a/azure_core-1.38.3.tar.gz", hash = "sha256:a7931fd445cb4af8802c6f39c6a326bbd1e34b115846550a8245fa656ead6f8e", size = 367267, upload-time = "2026-03-12T20:28:21.122Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9a/3d/ac86083efa45a439d0bbfb7947615227813d368b9e1e93d23fd30de6fec0/azure_core-1.38.3-py3-none-any.whl", hash = "sha256:bf59d29765bf4748ab9edf25f98a30b7ea9797f43e367c06d846a30b29c1f845", size = 218231, upload-time = "2026-03-12T20:28:22.462Z" },
 ]
 
 [package.optional-dependencies]
@@ -565,7 +587,7 @@ resolution-markers = [
     "python_full_version < '3.8.1'",
 ]
 dependencies = [
-    { name = "azure-core", marker = "python_full_version < '3.9'" },
+    { name = "azure-core", version = "1.33.0", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, marker = "python_full_version < '3.9'" },
     { name = "cryptography", marker = "python_full_version < '3.9'" },
     { name = "msal", marker = "python_full_version < '3.9'" },
     { name = "msal-extensions", version = "1.3.0", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, marker = "python_full_version < '3.9'" },
@@ -588,7 +610,7 @@ resolution-markers = [
     "python_full_version == '3.9.*'",
 ]
 dependencies = [
-    { name = "azure-core", marker = "python_full_version >= '3.9'" },
+    { name = "azure-core", version = "1.38.3", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, marker = "python_full_version >= '3.9'" },
     { name = "cryptography", marker = "python_full_version >= '3.9'" },
     { name = "msal", marker = "python_full_version >= '3.9'" },
     { name = "msal-extensions", version = "1.3.1", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, marker = "python_full_version >= '3.9'" },
@@ -608,7 +630,7 @@ resolution-markers = [
     "python_full_version < '3.8.1'",
 ]
 dependencies = [
-    { name = "azure-core", marker = "python_full_version < '3.9'" },
+    { name = "azure-core", version = "1.33.0", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, marker = "python_full_version < '3.9'" },
     { name = "cryptography", marker = "python_full_version < '3.9'" },
     { name = "isodate", marker = "python_full_version < '3.9'" },
     { name = "typing-extensions", version = "4.13.2", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, marker = "python_full_version < '3.9'" },
@@ -630,7 +652,7 @@ resolution-markers = [
     "python_full_version == '3.9.*'",
 ]
 dependencies = [
-    { name = "azure-core", marker = "python_full_version >= '3.9'" },
+    { name = "azure-core", version = "1.38.3", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, marker = "python_full_version >= '3.9'" },
     { name = "cryptography", marker = "python_full_version >= '3.9'" },
     { name = "isodate", marker = "python_full_version >= '3.9'" },
     { name = "typing-extensions", version = "4.15.0", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, marker = "python_full_version >= '3.9'" },
@@ -642,7 +664,7 @@ wheels = [
 
 [package.optional-dependencies]
 aio = [
-    { name = "azure-core", extra = ["aio"], marker = "python_full_version >= '3.10'" },
+    { name = "azure-core", version = "1.38.3", source = { registry = "https://pypi-proxy.dev.databricks.com/simple" }, extra = ["aio"], marker = "python_full_version >= '3.10'" },
 ]
 
 [[package]]
